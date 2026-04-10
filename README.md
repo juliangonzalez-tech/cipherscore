@@ -2,6 +2,15 @@
 
 CipherScore is a privacy-first password strength checker and generator built with Next.js, TypeScript, Tailwind CSS, and zxcvbn. It analyzes passwords locally in the browser, offers optional breached-password checking with k-anonymity, and presents the whole experience in a polished dark UI designed for a portfolio.
 
+## Screenshots
+
+![CipherScore main interface](./screenshots/cipherscore-main.png)
+![CipherScore privacy section](./screenshots/cipherscore-privacy.png)
+
+## In Simple Terms
+
+CipherScore helps users check how strong their passwords are and generate better ones. It runs password analysis locally in the browser for privacy, gives security feedback, and includes an optional breach check that does not send the raw password.
+
 ## Product plan
 
 - Build one focused landing page with two core utilities: a password checker and a password generator.
