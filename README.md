@@ -67,14 +67,14 @@ Everything here is **implemented**. The next section says which security propert
 - **No "time to crack" is shown**, because it depends on an attacker's hardware and on how the site hashes passwords, neither of which a web page can know. The original showed one and displayed the 0 to 4 score as "1/5".
 - Labels describe guessability ("Hard to guess"), not security ("Excellent").
 - Fuzzy (Levenshtein) matching is off and analysis covers the first 100 characters: with them on, a single estimate took 0.2 to 0.7 s for short inputs and over a second at 256 characters on my machine, which froze the page. The UI also waits 250 ms after typing stops. Pathological repetitive input at the cap can still take about 0.4 to 0.6 s.
-- The estimator is loaded on demand, so its dictionaries stay out of the first page load (page 36 kB, 123 kB first load JS).
+- The estimator is loaded on demand, so its dictionaries ship as separate chunks instead of being part of the first page load. (Next.js 16 no longer prints bundle sizes in the build output, so the earlier "36 kB page, 123 kB first load" figures from Next 14 have not been re-measured.)
 - The result object returned to the UI is a copy that drops zxcvbn's `password` and matched-substring fields.
 
 **NIST SP 800-63B-4 (final, 31 July 2025) and OWASP.** Followed where they apply to a tool like this: the 15-character single-factor / 8-character multi-factor minimums drive the default length (20) and the warning; no password rotation advice; paste and a show-password option are allowed; at least 64 characters are accepted (the generator goes to 128); a breached-password check is offered; a strength meter is included. NIST tells *verifiers* not to impose composition rules. A generator is a different case, so the character-type switches exist only for compatibility with sites that still demand them, and the UI says length matters more than complexity.
 
 **Breach check.** The browser computes SHA-1 locally and calls this app's `/api/breach-check?prefix=XXXXX`, which forwards to `api.pwnedpasswords.com/range/XXXXX` with `Add-Padding: true` (the response is padded to 800 to 1,000 rows, padding rows have a count of 0 and are ignored by the matcher). The 35-character suffix never leaves the browser. SHA-1 is used only because the API defines it. The route validates the prefix strictly, forwards no cookies or headers, sets `Cache-Control: no-store`, times out after 8 s, and logs nothing. The Pwned Passwords API needs no key and has no attribution requirement; attribution is welcomed.
 
-**Dependencies.** Runtime: Next, React, and three `@zxcvbn-ts` packages (replacing one `zxcvbn`). Dev only: Vitest, jsdom, Testing Library. Versions are pinned. Vitest 3 and jsdom 26 were chosen because the newest releases need Node 22+, and the project was developed on Node 20.
+**Dependencies.** Runtime: Next 16 (Turbopack for dev and build), React 19, and three `@zxcvbn-ts` packages (replacing one `zxcvbn`). Dev only: Vitest 4, jsdom, Testing Library. Versions are pinned, except `next`, which uses a caret range. Vitest 4.1.12 is the release `npm audit` points to for its test-runner advisories and still supports Node 20; jsdom stays on 26 because the newest jsdom needs Node 22+, and the project was developed on Node 20.
 
 ## Limitations
 
@@ -82,7 +82,7 @@ Everything here is **implemented**. The next section says which security propert
 - **The breach check reveals more than nothing.** The 5-character prefix goes to whoever hosts this app (with your IP address, if their logs keep it) and then to Have I Been Pwned. Padding and k-anonymity limit what that reveals; they do not make it zero. "Not found" does not mean "strong".
 - **Strength scores are estimates.** zxcvbn cannot know private leaked lists or what is specific to you, and a high score says nothing about how a site stores your password. Only the first 100 characters are analyzed.
 - **CSP keeps `'unsafe-inline'` for scripts** because Next.js emits inline bootstrap scripts and a nonce-based policy would force dynamic rendering. `connect-src 'self'` still blocks exfiltration to other origins. HSTS and TLS are the deployment's job; they are not configured here.
-- **Known dependency advisories.** `npm audit --omit=dev` reports advisories against Next.js 14.2.35 (2 packages flagged at last run: `next` and its bundled `postcss`). The fix is a major upgrade (Next 16, React 19), which I did not do unprompted. I have not assessed each advisory against this app, so treat an upgrade as outstanding work before any public deployment.
+- **Known dependency advisories.** On 24 October 2026, after the move to Next.js 16.4.3, `npm audit --omit=dev` reported 0 vulnerabilities. The full `npm audit` still reports 3 moderate findings, all one advisory (GHSA-rj75-hqrm-r3gf, CPU exhaustion in `postcss-selector-parser`) reached through Tailwind CSS 3 (`tailwindcss` > `postcss-nested` > `postcss-selector-parser`). npm's only fix is Tailwind 4, a major upgrade of the styling toolchain, so it was left alone. The package runs on the build machine while compiling this project's own CSS and is not part of the served app. Advisory databases change daily: re-run `npm audit` before deploying.
 - **Not tested:** Firefox and Safari, real mobile devices, screen readers, an automated accessibility checker, slow hardware, and any deployment. The app has had no independent security review or penetration test.
 - A hyphen separator can make two different word sequences print identically when the list's hyphenated words ("drop-down", "t-shirt", ...) are involved. The effect on entropy is negligible and is not modelled.
 - The v0.1 screenshots above are out of date.
@@ -108,7 +108,7 @@ npm run build       # production build, also type-checks
 
 ## Setup
 
-Developed and tested on Node.js 20.20.2. Other versions were not tried (Vitest 3 supports Node 18, 20 and 22+; Next.js 14 needs 18.17 or newer).
+Developed and tested on Node.js 20.20.2. Other versions were not tried (Next.js 16 needs Node.js 20.9 or newer; Vitest 4 supports Node 20, 22 and 24+).
 
 ```bash
 npm install
@@ -161,7 +161,7 @@ Privacy-first password checker and generator built with Next.js and TypeScript: 
 
 ## Possible next steps
 
-1. Upgrade Next.js to a release without the open advisories, then re-run the full suite.
+1. Upgrade Tailwind CSS to v4 to clear the last (dev-only, moderate) audit finding, then compare the pages visually, since Tailwind 4 changes defaults.
 2. Refresh the screenshots and run an automated accessibility check (axe) plus a screen-reader pass.
 3. Move strength estimation into a Web Worker to remove the remaining main-thread pause on pathological input.
 4. Add a strict nonce-based CSP once pages can render dynamically.
