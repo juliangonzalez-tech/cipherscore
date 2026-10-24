@@ -1,27 +1,40 @@
 import { NextRequest, NextResponse } from "next/server";
+import { isValidPrefix } from "@/lib/breach";
+
+export const dynamic = "force-dynamic";
+
+const RANGE_API = "https://api.pwnedpasswords.com/range/";
+const UPSTREAM_TIMEOUT_MS = 8000;
+
+/**
+ * Proxy for the Pwned Passwords range API. The only input is a 5-character SHA-1 prefix, which
+ * on its own does not identify a password. This handler deliberately does not log anything:
+ * not the prefix, not the upstream response, not errors.
+ */
+function json(body: unknown, status = 200) {
+  return NextResponse.json(body, { status, headers: { "Cache-Control": "no-store" } });
+}
 
 export async function GET(request: NextRequest) {
-  const prefix = request.nextUrl.searchParams.get("prefix")?.toUpperCase();
+  const prefix = request.nextUrl.searchParams.get("prefix")?.toUpperCase() ?? "";
 
-  if (!prefix || !/^[A-F0-9]{5}$/.test(prefix)) {
-    return NextResponse.json({ error: "A valid 5-character SHA-1 prefix is required." }, { status: 400 });
+  if (!isValidPrefix(prefix)) {
+    return json({ error: "A valid 5-character SHA-1 prefix is required." }, 400);
   }
 
   try {
-    const response = await fetch(`https://api.pwnedpasswords.com/range/${prefix}`, {
-      headers: {
-        "Add-Padding": "true"
-      },
-      next: { revalidate: 0 }
+    const response = await fetch(`${RANGE_API}${prefix}`, {
+      headers: { "Add-Padding": "true" },
+      cache: "no-store",
+      signal: AbortSignal.timeout(UPSTREAM_TIMEOUT_MS)
     });
 
     if (!response.ok) {
-      return NextResponse.json({ error: "Failed to query breach service." }, { status: 502 });
+      return json({ error: "The breach service returned an error." }, 502);
     }
 
-    const body = await response.text();
-    return NextResponse.json({ matches: body });
+    return json({ matches: await response.text() });
   } catch {
-    return NextResponse.json({ error: "Breach service unavailable." }, { status: 502 });
+    return json({ error: "The breach service is unavailable." }, 502);
   }
 }

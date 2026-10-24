@@ -10,6 +10,20 @@ html {
   scroll-behavior: smooth;
 }
 
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
 body {
   @apply bg-canvas text-ink antialiased;
   background-image:
@@ -28,15 +42,15 @@ body {
   }
 
   .field {
-    @apply w-full rounded-2xl border border-white/10 bg-white/[0.04] px-4 py-3 text-sm text-ink outline-none transition placeholder:text-white/30 focus:border-accent/70 focus:ring-2 focus:ring-accent/20;
+    @apply w-full rounded-2xl border border-white/10 bg-white/[0.04] px-4 py-3 text-sm text-ink outline-none transition placeholder:text-white/50 focus:border-accent/70 focus:ring-2 focus:ring-accent/30 aria-[invalid=true]:border-danger/70;
   }
 
   .button-primary {
-    @apply inline-flex items-center justify-center rounded-2xl bg-ink px-4 py-3 text-sm font-medium text-canvas transition hover:bg-white focus:outline-none focus:ring-2 focus:ring-accent/50;
+    @apply inline-flex items-center justify-center rounded-2xl bg-ink px-4 py-3 text-sm font-medium text-canvas transition hover:bg-white focus:outline-none focus-visible:ring-2 focus-visible:ring-accent/60 disabled:cursor-not-allowed disabled:opacity-40;
   }
 
   .button-secondary {
-    @apply inline-flex items-center justify-center rounded-2xl border border-white/10 bg-white/[0.04] px-4 py-3 text-sm font-medium text-ink transition hover:bg-white/[0.08] focus:outline-none focus:ring-2 focus:ring-accent/40;
+    @apply inline-flex items-center justify-center rounded-2xl border border-white/10 bg-white/[0.04] px-4 py-3 text-sm font-medium text-ink transition hover:bg-white/[0.08] focus:outline-none focus-visible:ring-2 focus-visible:ring-accent/60 disabled:cursor-not-allowed disabled:opacity-40;
   }
 
   .toggle {
