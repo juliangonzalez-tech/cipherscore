@@ -107,7 +107,7 @@ describe("GET /api/breach-check: proxying", () => {
   });
 
   it("refuses an oversized answer instead of relaying it", async () => {
-    // Real padded answers are roughly 40 KB; this is far beyond any legitimate range.
+    // Real padded answers measured 80-110 KB; 2.3 MB is far beyond any legitimate range.
     stubUpstream(new Response(`${VALID_ROW}\r\n`.repeat(60_000)));
 
     const response = await GET(request("?prefix=5BAA6"));

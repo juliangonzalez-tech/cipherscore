@@ -5,7 +5,10 @@ export const dynamic = "force-dynamic";
 
 const RANGE_API = "https://api.pwnedpasswords.com/range/";
 const UPSTREAM_TIMEOUT_MS = 8000;
-/** Real padded ranges are around 40 KB; anything this large is not a legitimate answer. */
+/**
+ * Real padded ranges measured 80-110 KB (about 2,000-2,700 rows) in October 2026, so this leaves
+ * room for growth while refusing anything that cannot be a legitimate answer.
+ */
 const MAX_RANGE_BYTES = 512 * 1024;
 /** One `SUFFIX:COUNT` row: the remaining 35 hex characters of the SHA-1 hash and a count. */
 const RANGE_ROW = /^[0-9A-F]{35}:\d+$/;
