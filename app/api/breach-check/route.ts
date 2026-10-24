@@ -5,6 +5,19 @@ export const dynamic = "force-dynamic";
 
 const RANGE_API = "https://api.pwnedpasswords.com/range/";
 const UPSTREAM_TIMEOUT_MS = 8000;
+/** Real padded ranges are around 40 KB; anything this large is not a legitimate answer. */
+const MAX_RANGE_BYTES = 512 * 1024;
+/** One `SUFFIX:COUNT` row: the remaining 35 hex characters of the SHA-1 hash and a count. */
+const RANGE_ROW = /^[0-9A-F]{35}:\d+$/;
+
+/**
+ * The browser treats "suffix not in the list" as "not breached", so an answer that is not a
+ * range (an HTML error or captive-portal page, a truncated body) must be rejected here rather
+ * than turned into a false clean verdict.
+ */
+function isRangeBody(body: string) {
+  return body.length <= MAX_RANGE_BYTES && body.split(/\r?\n/).every((row) => row === "" || RANGE_ROW.test(row));
+}
 
 /**
  * Proxy for the Pwned Passwords range API. The only input is a 5-character SHA-1 prefix, which
@@ -33,7 +46,11 @@ export async function GET(request: NextRequest) {
       return json({ error: "The breach service returned an error." }, 502);
     }
 
-    return json({ matches: await response.text() });
+    const body = await response.text();
+    if (!isRangeBody(body)) {
+      return json({ error: "The breach service returned an unexpected response." }, 502);
+    }
+    return json({ matches: body });
   } catch {
     return json({ error: "The breach service is unavailable." }, 502);
   }
