@@ -151,10 +151,12 @@ AI tools were used during development, debugging, and testing. Project requireme
 
 ## Third-party material
 
+Full notices are in [THIRD_PARTY_NOTICES.md](./THIRD_PARTY_NOTICES.md).
+
 - **EFF Large Wordlist for Passphrases**, Electronic Frontier Foundation, licensed [CC BY 3.0 US](https://creativecommons.org/licenses/by/3.0/us/), from <https://www.eff.org/dice>. Stored unmodified (dice numbers removed) in `lib/wordlists/eff-large.ts`; attributed in the app footer.
 - **zxcvbn-ts** (`@zxcvbn-ts/core`, `language-common`, `language-en`), MIT License.
 - **Have I Been Pwned: Pwned Passwords** by Troy Hunt, used through its public range API.
 
 ## License
 
-The code is released under the [MIT License](./LICENSE). The EFF Large Wordlist in `lib/wordlists/eff-large.ts` is not covered by that license: it remains © Electronic Frontier Foundation under [CC BY 3.0 US](https://creativecommons.org/licenses/by/3.0/us/), and any reuse must keep its attribution.
+The code is released under the [MIT License](./LICENSE). The EFF Large Wordlist in `lib/wordlists/eff-large.ts` is not covered by that license: it remains © Electronic Frontier Foundation under [CC BY 3.0 US](https://creativecommons.org/licenses/by/3.0/us/), and any reuse must keep its attribution (see [THIRD_PARTY_NOTICES.md](./THIRD_PARTY_NOTICES.md)).
