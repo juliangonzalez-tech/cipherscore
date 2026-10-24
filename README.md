@@ -63,7 +63,7 @@ CipherScore tries to protect a password from being sent, stored, logged or expos
 
 ### Implemented vs. verified
 
-"Automated" means a test in `tests/` (`npm test`). "Browser" means a manual check of a production build in Chromium (the Claude Code browser pane and headless Chrome). Statistical tests and source scans can show that a bug is absent from what they exercise; they are not proofs.
+"Automated" means a test in `tests/` (`npm test`). "Browser" means a manual check of a production build in Chromium (an embedded browser and headless Chrome). Statistical tests and source scans can show that a bug is absent from what they exercise; they are not proofs.
 
 | Property | Implementation | Verified | Not verified |
 |---|---|---|---|
@@ -145,9 +145,9 @@ next.config.mjs               Content-Security-Policy and security headers
 
 **Stack:** Next.js 16 (App Router, Turbopack), React 19, TypeScript, Tailwind CSS 3, Vitest 4 with jsdom and Testing Library. Runtime dependencies are Next, React and the three `@zxcvbn-ts` packages.
 
-## Development process and AI assistance
+## AI assistance
 
-This project was developed with substantial help from Anthropic's Claude, used through Claude Code. Claude wrote and revised much of the code, the tests and this README, and ran the browser checks described above. Commits it co-authored carry a `Co-Authored-By: Claude` trailer, so the history shows which changes were AI-assisted.
+AI tools were used during development, debugging, and testing. Project requirements, design decisions, and validation were directed by the developer.
 
 ## Third-party material
 
