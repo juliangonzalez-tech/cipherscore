@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { SecureRandomError, randomChoice, randomInt } from "@/lib/secure-random";
+import { SecureRandomError, randomInt } from "@/lib/secure-random";
 
 const TWO_32 = 2 ** 32;
 
@@ -147,15 +147,5 @@ describe("randomInt: rejection sampling removes modulo bias", () => {
     // 5 degrees of freedom: 40 corresponds to a p-value around 1e-7, so a healthy source
     // essentially never fails while a visibly skewed one does.
     expect(chiSquare).toBeLessThan(40);
-  });
-});
-
-describe("randomChoice", () => {
-  it("indexes the list with the drawn value", () => {
-    expect(randomChoice(["a", "b", "c"], replay([4]))).toBe("b");
-  });
-
-  it("refuses an empty list", () => {
-    expect(() => randomChoice([])).toThrow(RangeError);
   });
 });

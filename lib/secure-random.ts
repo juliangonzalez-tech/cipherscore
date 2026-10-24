@@ -64,11 +64,3 @@ export function randomInt(maxExclusive: number, fill: FillRandomValues = webCryp
 
   throw new SecureRandomError("The random source kept producing rejected values; refusing to continue.");
 }
-
-/** Picks one element uniformly at random. */
-export function randomChoice<T>(items: ArrayLike<T>, fill: FillRandomValues = webCryptoFill): T {
-  if (items.length === 0) {
-    throw new RangeError("Cannot choose from an empty list.");
-  }
-  return items[randomInt(items.length, fill)];
-}
