@@ -157,4 +157,4 @@ This project was developed with substantial help from Anthropic's Claude, used t
 
 ## License
 
-No license has been chosen yet, so all rights are reserved by default. The EFF wordlist above remains under CC BY 3.0 US whatever license is chosen for the code.
+The code is released under the [MIT License](./LICENSE). The EFF Large Wordlist in `lib/wordlists/eff-large.ts` is not covered by that license: it remains © Electronic Frontier Foundation under [CC BY 3.0 US](https://creativecommons.org/licenses/by/3.0/us/), and any reuse must keep its attribution.
