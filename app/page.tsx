@@ -27,40 +27,23 @@ const privacyItems = [
 export default function Home() {
   return (
     <main className="min-h-screen">
-      <section className="mx-auto flex w-full max-w-7xl flex-col gap-12 px-4 pb-16 pt-8 sm:px-8 lg:px-10 lg:pt-10">
-        <div className="card relative overflow-hidden px-6 py-8 sm:px-8 sm:py-10">
-          <div className="pointer-events-none absolute inset-0 bg-mesh opacity-80" />
-          <div className="relative flex flex-col gap-8 lg:flex-row lg:items-end lg:justify-between">
-            <div className="max-w-3xl">
-              <div className="mb-4 inline-flex rounded-full border border-white/10 bg-white/[0.04] px-3 py-1 text-xs uppercase tracking-[0.24em] text-white/70">
-                Privacy-first password tools
-              </div>
-              <h1 className="max-w-3xl text-4xl font-semibold tracking-tight text-white sm:text-5xl">
-                CipherScore helps people build stronger passwords without giving their secrets away.
-              </h1>
-              <p className="mt-4 max-w-2xl text-sm leading-7 text-white/75 sm:text-base">
-                A local-first password checker and generator. Strength is estimated with zxcvbn-ts, passwords come from
-                the browser&rsquo;s secure random number generator, and passphrases from the EFF wordlist.
-              </p>
-            </div>
-            <div className="grid max-w-md grid-cols-2 gap-3 text-sm text-white/75 sm:grid-cols-3 lg:min-w-[320px]">
-              <div className="card animate-float px-4 py-4 motion-reduce:animate-none">
-                <div className="text-xl font-semibold text-white">Local</div>
-                <div className="mt-1 text-xs uppercase tracking-[0.18em] text-white/65">Analysis</div>
-              </div>
-              <div className="card animate-float px-4 py-4 [animation-delay:1.2s] motion-reduce:animate-none">
-                <div className="text-xl font-semibold text-white">Optional</div>
-                <div className="mt-1 text-xs uppercase tracking-[0.18em] text-white/65">Breach check</div>
-              </div>
-              <div className="card animate-float col-span-2 px-4 py-4 [animation-delay:2.4s] motion-reduce:animate-none sm:col-span-1">
-                <div className="text-xl font-semibold text-white">None</div>
-                <div className="mt-1 text-xs uppercase tracking-[0.18em] text-white/65">Stored or tracked</div>
-              </div>
-            </div>
+      <section className="mx-auto flex w-full max-w-7xl flex-col gap-10 px-4 pb-16 pt-8 sm:px-8 lg:px-10 lg:pt-10">
+        <header className="flex flex-col gap-4 border-b border-white/10 pb-6 lg:flex-row lg:items-end lg:justify-between">
+          <div className="max-w-3xl">
+            <h1 className="text-3xl font-semibold tracking-tight text-white sm:text-4xl">CipherScore</h1>
+            <p className="mt-2 text-sm leading-6 text-white/75 sm:text-base sm:leading-7">
+              Check how guessable a password is, and generate random passwords or passphrases. Everything runs in your
+              browser: strength estimates come from zxcvbn-ts, randomness from Web Crypto, and words from the EFF wordlist.
+            </p>
           </div>
-        </div>
+          <ul className="flex flex-wrap gap-x-5 gap-y-1 text-xs uppercase tracking-[0.18em] text-white/65 lg:justify-end">
+            <li>Local analysis</li>
+            <li>Opt-in breach check</li>
+            <li>Nothing stored or tracked</li>
+          </ul>
+        </header>
 
-        <div className="grid gap-6 lg:grid-cols-[1.2fr_0.8fr]">
+        <div className="grid gap-6 lg:grid-cols-[1.2fr_0.8fr] lg:items-start">
           <PasswordChecker />
           <PasswordGenerator />
         </div>
@@ -83,8 +66,8 @@ export default function Home() {
         </SectionShell>
 
         <SectionShell
-          eyebrow="How It Works"
-          title="Security-focused logic with a portfolio-ready presentation."
+          eyebrow="How it works"
+          title="Where each number comes from."
           description="Estimates are labelled as estimates, randomness comes from the platform CSPRNG, and the limits are stated."
         >
           <div className="grid gap-4 md:grid-cols-3">
@@ -98,7 +81,18 @@ export default function Home() {
         </SectionShell>
 
         <footer className="border-t border-white/10 pt-6 text-sm leading-6 text-white/65">
-          <p>CipherScore. Local-first password coaching, following NIST SP 800-63B-4 and OWASP guidance.</p>
+          <p>
+            CipherScore follows NIST SP 800-63B-4 and OWASP guidance. Source code, tests and known limitations are on{" "}
+            <a
+              className="underline decoration-white/40 underline-offset-2 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/60"
+              href="https://github.com/juliangonzalez-tech/cipherscore"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              GitHub
+            </a>
+            .
+          </p>
           <p className="mt-1">
             Passphrases use the{" "}
             <a
