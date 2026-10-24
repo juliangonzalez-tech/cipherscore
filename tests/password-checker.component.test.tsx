@@ -4,6 +4,7 @@ import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-libra
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { PasswordChecker } from "@/components/password-checker";
 import { installPrivacyProbe } from "./helpers/privacy-probe";
+import { interactAndReadBeforeNextTask, settle, typeNatively } from "./helpers/react-timing";
 
 // Well-known SHA-1 test vector: SHA-1("password") = 5BAA61E4C9B93F3F0682250B6CF8331B7EE68FD8
 const PREFIX = "5BAA6";
@@ -241,5 +242,52 @@ describe("PasswordChecker: privacy", () => {
 
     type("password1");
     expect(screen.queryByText(/times in leaked data/i)).toBeNull();
+  });
+
+  it("never shows the earlier breach verdict beside an edited password, even for one render", async () => {
+    const probe = installPrivacyProbe();
+    probe.fetchSpy.mockImplementation(async () => jsonResponse({ matches: `${SUFFIX}:12` }));
+    render(<PasswordChecker />);
+    type("password");
+    await meter();
+    fireEvent.click(breachButton());
+    await screen.findByText(/12 times in leaked data/);
+
+    await interactAndReadBeforeNextTask(() => typeNatively(field(), "password1"));
+
+    expect(screen.queryByText(/times in leaked data/i)).toBeNull();
+    expect(screen.queryByText(/appears in known data breaches/i)).toBeNull();
+    await settle();
+  });
+
+  it("shows that a slow lookup is in progress and blocks duplicate requests", async () => {
+    let answer: (response: Response) => void = () => {};
+    const probe = installPrivacyProbe();
+    probe.fetchSpy.mockImplementation(() => new Promise<Response>((resolve) => (answer = resolve)));
+    render(<PasswordChecker />);
+    type("password");
+
+    fireEvent.click(breachButton());
+
+    expect(await screen.findByText(/checking the hash prefix/i)).toBeTruthy();
+    expect(breachButton().textContent).toMatch(/checking/i);
+    expect(breachButton().disabled).toBe(true);
+    fireEvent.click(breachButton());
+    expect(probe.fetchSpy).toHaveBeenCalledTimes(1);
+
+    await act(async () => answer(jsonResponse({ matches: `${SUFFIX}:3` })));
+    expect(await screen.findByText(/3 times in leaked data/)).toBeTruthy();
+  });
+
+  it("reports a malformed answer as an error instead of a clean verdict", async () => {
+    const probe = installPrivacyProbe();
+    probe.fetchSpy.mockImplementation(async () => new Response("<html>Gateway</html>", { status: 200 }));
+    render(<PasswordChecker />);
+    type("password");
+
+    fireEvent.click(breachButton());
+
+    expect((await screen.findByRole("alert")).textContent).toMatch(/unreadable response/i);
+    expect(screen.queryByText(/not found in the breach list/i)).toBeNull();
   });
 });

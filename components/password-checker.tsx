@@ -100,14 +100,16 @@ export function PasswordChecker() {
     return () => window.clearTimeout(timer);
   }, [password, estimator]);
 
-  // Any edit invalidates a breach result, and cancels a lookup that is still running.
-  useEffect(() => {
+  useEffect(() => () => breachRequest.current?.abort(), []);
+
+  // Any edit invalidates a breach result and cancels a lookup that is still running. This happens
+  // in the same event as the edit, so the old verdict is never rendered beside the new password.
+  function changePassword(next: string) {
     breachRequest.current?.abort();
     breachRequest.current = null;
+    setPassword(next);
     setBreach({ status: "idle" });
-  }, [password]);
-
-  useEffect(() => () => breachRequest.current?.abort(), []);
+  }
 
   async function runBreachCheck() {
     if (!password) return;
@@ -155,7 +157,7 @@ export function PasswordChecker() {
             className="field"
             type={visible ? "text" : "password"}
             value={password}
-            onChange={(event) => setPassword(event.target.value)}
+            onChange={(event) => changePassword(event.target.value)}
             placeholder="Type or paste a password to analyze"
             autoComplete="off"
             autoCapitalize="off"
@@ -222,12 +224,10 @@ export function PasswordChecker() {
               </p>
             )}
           </div>
-        ) : (
-          <p className="text-sm text-white/70">
-            {password && !loadFailed
-              ? "Analyzing…"
-              : "Enter a password to see an estimate. Nothing you type leaves this page."}
-          </p>
+        ) : !password ? (
+          <p className="text-sm text-white/70">Enter a password to see an estimate. Nothing you type leaves this page.</p>
+        ) : loadFailed ? null : (
+          <p className="text-sm text-white/70">Analyzing…</p>
         )}
       </div>
 
@@ -261,7 +261,7 @@ export function PasswordChecker() {
           <div>
             <h3 className="text-sm font-medium text-white">Optional breach check</h3>
             <p className="mt-1 text-sm leading-6 text-white/70">
-              Looks the password up in the Have I Been Pwned Pwned Passwords list. Only the first 5 characters of its
+              Looks the password up in Have I Been Pwned&rsquo;s Pwned Passwords list. Only the first 5 characters of its
               SHA-1 hash are sent (k-anonymity), never the password. Nothing happens until you press the button.
             </p>
           </div>
