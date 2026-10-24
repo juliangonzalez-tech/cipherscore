@@ -23,6 +23,8 @@ import {
 
 type Mode = "password" | "passphrase";
 type CopyState = "idle" | "copied" | "failed";
+/** How copying a particular value went, so the note never describes a different value. */
+type CopyOutcome = { value: string; state: Exclude<CopyState, "idle"> };
 type PasswordFlags = Omit<PasswordOptions, "length">;
 
 const SEPARATOR_LABELS: Record<PassphraseSeparator, string> = {
@@ -33,6 +35,9 @@ const SEPARATOR_LABELS: Record<PassphraseSeparator, string> = {
 };
 
 const { length: DEFAULT_LENGTH, ...DEFAULT_FLAGS } = DEFAULT_PASSWORD_OPTIONS;
+
+/** How long the "copied" confirmation stays visible. */
+const COPIED_NOTE_MS = 3000;
 
 type Settings = {
   mode: Mode;
@@ -154,22 +159,24 @@ export function PasswordGenerator() {
   const [settings, setSettings] = useState<Settings>(INITIAL_SETTINGS);
   const [output, setOutput] = useState<Output>(EMPTY_OUTPUT);
   const [revealed, setRevealed] = useState(true);
-  const [copyState, setCopyState] = useState<CopyState>("idle");
+  const [copyOutcome, setCopyOutcome] = useState<CopyOutcome | null>(null);
 
   const { mode, flags, lengthText, passphrase } = settings;
   const { value: generated, error: generationError } = output;
+  // A copy that finishes after the value changed (the clipboard API is asynchronous) must not
+  // label the new value as copied, so the outcome only counts for the value it was made for.
+  const copyState: CopyState = copyOutcome && copyOutcome.value === generated ? copyOutcome.state : "idle";
 
   const outputRef = useRef<HTMLOutputElement>(null);
   const copyTimer = useRef<number | undefined>(undefined);
   const ids = { length: useId(), words: useId(), separator: useId(), error: useId(), output: useId() };
 
   // The settings and the value generated from them change together, in the same event, so the page
-  // never shows an old value beside new settings (or a stale "copied" note beside a new value).
-  // Generating in an effect instead would render the new settings with the old value first.
+  // never shows an old value beside new settings. Generating in an effect instead would render the
+  // new settings with the old value first.
   function apply(next: Settings) {
     setSettings(next);
     setOutput(generateOutput(next));
-    setCopyState("idle");
   }
 
   // Random output cannot be rendered on the server (it would not match the client), so the first
@@ -210,16 +217,17 @@ export function PasswordGenerator() {
   }, [copyState]);
 
   async function copyToClipboard() {
-    if (!generated) return;
+    const value = generated;
+    if (!value) return;
     window.clearTimeout(copyTimer.current);
     try {
-      await navigator.clipboard.writeText(generated);
-      setCopyState("copied");
-      copyTimer.current = window.setTimeout(() => setCopyState("idle"), 3000);
+      await navigator.clipboard.writeText(value);
+      setCopyOutcome({ value, state: "copied" });
+      copyTimer.current = window.setTimeout(() => setCopyOutcome(null), COPIED_NOTE_MS);
     } catch {
       // Clipboard access can be denied or missing (for example on plain http).
       setRevealed(true);
-      setCopyState("failed");
+      setCopyOutcome({ value, state: "failed" });
     }
   }
 

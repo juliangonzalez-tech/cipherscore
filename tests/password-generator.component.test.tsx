@@ -4,6 +4,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { PasswordGenerator } from "@/components/password-generator";
 import { EFF_LARGE_WORDLIST } from "@/lib/wordlists/eff-large";
 import { installPrivacyProbe } from "./helpers/privacy-probe";
+import { interactAndReadBeforeNextTask, settle, typeNatively } from "./helpers/react-timing";
 
 afterEach(cleanup);
 
@@ -100,6 +101,44 @@ describe("PasswordGenerator: configuration", () => {
 
     expect(screen.getByRole("alert").textContent).toMatch(/length must be/i);
     expect(output().textContent).toBe("Nothing to show yet.");
+  });
+
+  it.each([
+    ["7", false],
+    ["8", true],
+    ["128", true],
+    ["129", false]
+  ])("treats the length boundary %s correctly in the interface", (value, valid) => {
+    render(<PasswordGenerator />);
+
+    fireEvent.change(lengthInput(), { target: { value } });
+
+    if (valid) {
+      expect(screen.queryByRole("alert")).toBeNull();
+      expect(output().textContent).toHaveLength(Number(value));
+    } else {
+      expect(screen.getByRole("alert").textContent).toMatch(/from 8 to 128/);
+      expect(output().textContent).toBe("Nothing to show yet.");
+    }
+  });
+
+  it("stays consistent through a burst of rapid setting changes", () => {
+    render(<PasswordGenerator />);
+    const steps: Array<() => void> = [
+      () => fireEvent.change(lengthInput(), { target: { value: "9" } }),
+      () => fireEvent.click(screen.getByRole("switch", { name: /symbols/i })),
+      () => fireEvent.change(screen.getByRole("slider", { name: /length/i }), { target: { value: "64" } }),
+      () => fireEvent.click(screen.getByRole("switch", { name: /uppercase/i })),
+      () => fireEvent.click(screen.getByRole("radio", { name: "Passphrase" })),
+      () => fireEvent.click(screen.getByRole("radio", { name: "Password" })),
+      () => fireEvent.click(screen.getByRole("switch", { name: /avoid look-alike/i }))
+    ];
+
+    for (let round = 0; round < 3; round += 1) steps.forEach((step) => step());
+
+    // After an odd number of rounds: symbols and uppercase off, look-alikes allowed, length 64.
+    expect(output().textContent).toMatch(/^[a-z0-9]{64}$/);
+    expect(screen.getByText(/bits of entropy/).textContent).toMatch(/^330\.9 bits/);
   });
 
   it("recovers as soon as the length is valid again", () => {
@@ -205,6 +244,23 @@ describe("PasswordGenerator: copy and reveal", () => {
     await waitFor(() => expect(window.getSelection()?.toString()).toBe(shown));
   });
 
+  it("does not claim a newer value was copied when an earlier copy finishes late", async () => {
+    let finishCopy = () => {};
+    const writeText = vi.fn(() => new Promise<void>((resolve) => (finishCopy = resolve)));
+    stubClipboard(writeText);
+    render(<PasswordGenerator />);
+    const copied = output().textContent;
+
+    fireEvent.click(screen.getByRole("button", { name: /copy password to clipboard/i }));
+    fireEvent.click(screen.getByRole("button", { name: /generate new password/i }));
+    expect(output().textContent).not.toBe(copied);
+    await act(async () => finishCopy());
+
+    expect(writeText).toHaveBeenCalledWith(copied);
+    expect(screen.queryByText(/was copied to your clipboard/i)).toBeNull();
+    expect(screen.getByRole("button", { name: /copy password to clipboard/i }).textContent).toMatch(/^Copy\b/);
+  });
+
   it("handles a browser with no clipboard API at all", async () => {
     Object.defineProperty(navigator, "clipboard", { value: undefined, configurable: true });
     render(<PasswordGenerator />);
@@ -230,34 +286,6 @@ describe("PasswordGenerator: copy and reveal", () => {
     expect(output().textContent).toBe(real);
   });
 });
-
-/**
- * Runs `interact` as a real DOM event outside act(), lets React finish its synchronous work
- * (microtasks), and returns before any later task. That is the page a browser could paint, or
- * another script could read, right after the interaction. Testing Library's `fireEvent` wraps
- * everything in act(), which also runs the follow-up renders and so hides exactly this state.
- */
-async function interactAndReadBeforeNextTask(interact: () => void) {
-  const env = globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean };
-  const previous = env.IS_REACT_ACT_ENVIRONMENT;
-  env.IS_REACT_ACT_ENVIRONMENT = false;
-  try {
-    interact();
-    for (let tick = 0; tick < 5; tick += 1) await Promise.resolve();
-  } finally {
-    env.IS_REACT_ACT_ENVIRONMENT = previous;
-  }
-}
-
-/** Lets scheduled follow-up work finish so it cannot leak into the next test. */
-async function settle() {
-  await act(async () => {});
-}
-
-function typeNatively(input: HTMLInputElement, value: string) {
-  Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")?.set?.call(input, value);
-  input.dispatchEvent(new Event("input", { bubbles: true }));
-}
 
 describe("PasswordGenerator: the output never lags behind the settings", () => {
   it("does not keep showing the old password beside a length error", async () => {
