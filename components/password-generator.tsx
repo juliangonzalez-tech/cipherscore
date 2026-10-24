@@ -34,6 +34,52 @@ const SEPARATOR_LABELS: Record<PassphraseSeparator, string> = {
 
 const { length: DEFAULT_LENGTH, ...DEFAULT_FLAGS } = DEFAULT_PASSWORD_OPTIONS;
 
+type Settings = {
+  mode: Mode;
+  flags: PasswordFlags;
+  // Kept as text so a half-typed or invalid length can be shown and explained, not silently fixed.
+  lengthText: string;
+  passphrase: PassphraseOptions;
+};
+
+type Output = { value: string; error: string };
+
+const INITIAL_SETTINGS: Settings = {
+  mode: "password",
+  flags: DEFAULT_FLAGS,
+  lengthText: String(DEFAULT_LENGTH),
+  passphrase: DEFAULT_PASSPHRASE_OPTIONS
+};
+
+const EMPTY_OUTPUT: Output = { value: "", error: "" };
+
+function toPasswordOptions(flags: PasswordFlags, lengthText: string): PasswordOptions {
+  return { ...flags, length: lengthText.trim() === "" ? Number.NaN : Number(lengthText) };
+}
+
+function findIssues({ mode, flags, lengthText, passphrase }: Settings) {
+  return mode === "password"
+    ? validatePasswordOptions(toPasswordOptions(flags, lengthText))
+    : validatePassphraseOptions(passphrase);
+}
+
+/** What to show for these settings: a fresh value, nothing (invalid settings), or an error. */
+function generateOutput(settings: Settings): Output {
+  if (findIssues(settings).length > 0) return EMPTY_OUTPUT;
+  try {
+    const { mode, flags, lengthText, passphrase } = settings;
+    const value =
+      mode === "password" ? generatePassword(toPasswordOptions(flags, lengthText)) : generatePassphrase(passphrase);
+    return { value, error: "" };
+  } catch {
+    return {
+      value: "",
+      error:
+        "This browser cannot provide secure random numbers, so nothing was generated. Try a current version of a major browser."
+    };
+  }
+}
+
 function SwitchRow({
   label,
   description,
@@ -105,54 +151,37 @@ function ModeOption({
 }
 
 export function PasswordGenerator() {
-  const [mode, setMode] = useState<Mode>("password");
-  const [flags, setFlags] = useState<PasswordFlags>(DEFAULT_FLAGS);
-  // Kept as text so a half-typed or invalid length can be shown and explained, not silently fixed.
-  const [lengthText, setLengthText] = useState(String(DEFAULT_LENGTH));
-  const [passphrase, setPassphrase] = useState<PassphraseOptions>(DEFAULT_PASSPHRASE_OPTIONS);
-
-  const [generated, setGenerated] = useState("");
-  const [generationError, setGenerationError] = useState("");
-  const [regenerations, setRegenerations] = useState(0);
+  const [settings, setSettings] = useState<Settings>(INITIAL_SETTINGS);
+  const [output, setOutput] = useState<Output>(EMPTY_OUTPUT);
   const [revealed, setRevealed] = useState(true);
   const [copyState, setCopyState] = useState<CopyState>("idle");
+
+  const { mode, flags, lengthText, passphrase } = settings;
+  const { value: generated, error: generationError } = output;
 
   const outputRef = useRef<HTMLOutputElement>(null);
   const copyTimer = useRef<number | undefined>(undefined);
   const ids = { length: useId(), words: useId(), separator: useId(), error: useId(), output: useId() };
 
-  const passwordOptions = useMemo<PasswordOptions>(
-    () => ({ ...flags, length: lengthText.trim() === "" ? Number.NaN : Number(lengthText) }),
-    [flags, lengthText]
-  );
-
-  const issues = useMemo(
-    () => (mode === "password" ? validatePasswordOptions(passwordOptions) : validatePassphraseOptions(passphrase)),
-    [mode, passwordOptions, passphrase]
-  );
-
-  useEffect(() => {
-    setGenerationError("");
-    if (issues.length > 0) {
-      setGenerated("");
-      return;
-    }
-    try {
-      setGenerated(mode === "password" ? generatePassword(passwordOptions) : generatePassphrase(passphrase));
-    } catch {
-      setGenerated("");
-      setGenerationError(
-        "This browser cannot provide secure random numbers, so nothing was generated. Try a current version of a major browser."
-      );
-    }
-  }, [mode, issues, passwordOptions, passphrase, regenerations]);
-
-  // A new value has not been copied yet.
-  useEffect(() => {
+  // The settings and the value generated from them change together, in the same event, so the page
+  // never shows an old value beside new settings (or a stale "copied" note beside a new value).
+  // Generating in an effect instead would render the new settings with the old value first.
+  function apply(next: Settings) {
+    setSettings(next);
+    setOutput(generateOutput(next));
     setCopyState("idle");
-  }, [generated]);
+  }
+
+  // Random output cannot be rendered on the server (it would not match the client), so the first
+  // value is created after mounting.
+  useEffect(() => {
+    setOutput(generateOutput(INITIAL_SETTINGS));
+  }, []);
 
   useEffect(() => () => window.clearTimeout(copyTimer.current), []);
+
+  const passwordOptions = useMemo(() => toPasswordOptions(flags, lengthText), [flags, lengthText]);
+  const issues = useMemo(() => findIssues(settings), [settings]);
 
   const entropyBits = useMemo(() => {
     if (!generated || issues.length > 0) return null;
@@ -194,8 +223,13 @@ export function PasswordGenerator() {
     }
   }
 
+  const setMode = (next: Mode) => apply({ ...settings, mode: next });
+  const setLengthText = (next: string) => apply({ ...settings, lengthText: next });
+  const setPassphrase = (change: (current: PassphraseOptions) => PassphraseOptions) =>
+    apply({ ...settings, passphrase: change(passphrase) });
+
   function setFlag(key: keyof PasswordFlags, value: boolean) {
-    setFlags((current) => ({ ...current, [key]: value }));
+    apply({ ...settings, flags: { ...flags, [key]: value } });
   }
 
   const shown = generated ? (revealed ? generated : "•".repeat(generated.length)) : "";
@@ -251,7 +285,7 @@ export function PasswordGenerator() {
           <button
             type="button"
             className="button-primary"
-            onClick={() => setRegenerations((count) => count + 1)}
+            onClick={() => apply(settings)}
             disabled={issues.length > 0}
           >
             Generate new {noun}

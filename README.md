@@ -82,7 +82,7 @@ Everything here is **implemented**. The next section says which security propert
 - **The breach check reveals more than nothing.** The 5-character prefix goes to whoever hosts this app (with your IP address, if their logs keep it) and then to Have I Been Pwned. Padding and k-anonymity limit what that reveals; they do not make it zero. "Not found" does not mean "strong".
 - **Strength scores are estimates.** zxcvbn cannot know private leaked lists or what is specific to you, and a high score says nothing about how a site stores your password. Only the first 100 characters are analyzed.
 - **CSP keeps `'unsafe-inline'` for scripts** because Next.js emits inline bootstrap scripts and a nonce-based policy would force dynamic rendering. `connect-src 'self'` still blocks exfiltration to other origins. HSTS and TLS are the deployment's job; they are not configured here.
-- **Known dependency advisories.** On 24 October 2026, after the move to Next.js 16.4.3, `npm audit --omit=dev` reported 0 vulnerabilities. The full `npm audit` still reports 3 moderate findings, all one advisory (GHSA-rj75-hqrm-r3gf, CPU exhaustion in `postcss-selector-parser`) reached through Tailwind CSS 3 (`tailwindcss` > `postcss-nested` > `postcss-selector-parser`). npm's only fix is Tailwind 4, a major upgrade of the styling toolchain, so it was left alone. The package runs on the build machine while compiling this project's own CSS and is not part of the served app. Advisory databases change daily: re-run `npm audit` before deploying.
+- **Known dependency advisories.** On 24 October 2026, after the move to Next.js 16.4.3, `npm audit --omit=dev` reported 0 vulnerabilities. The full `npm audit` still reports 3 moderate findings, all one advisory (GHSA-rj75-hqrm-r3gf, CPU exhaustion in `postcss-selector-parser`) reached through Tailwind CSS 3 (`tailwindcss` > `postcss-nested` > `postcss-selector-parser`). npm's only fix is Tailwind 4, a major upgrade of the styling toolchain, so it was left alone. These are development-only: `tailwindcss` is a `devDependency` that runs on the build machine while compiling this project's own CSS, and it is not part of the served app. Advisory databases change daily: re-run `npm audit` before deploying.
 - **Not tested:** Firefox and Safari, real mobile devices, screen readers, an automated accessibility checker, slow hardware, and any deployment. The app has had no independent security review or penetration test.
 - A hyphen separator can make two different word sequences print identically when the list's hyphenated words ("drop-down", "t-shirt", ...) are involved. The effect on entropy is negligible and is not modelled.
 - The v0.1 screenshots above are out of date.
@@ -90,7 +90,7 @@ Everything here is **implemented**. The next section says which security propert
 ## Testing
 
 ```bash
-npm test            # 250 tests in 10 files, about 10 s
+npm test            # 255 tests in 10 files, about 10 s
 npm run typecheck   # tsc --noEmit
 npm run build       # production build, also type-checks
 ```
@@ -103,7 +103,7 @@ npm run build       # production build, also type-checks
 | `passphrase.test.ts` | construction, word count, separators, validation, entropy, wordlist integrity (SHA-256) |
 | `strength.test.ts` | scores for weak and strong inputs, truncation, responsiveness, result carries no password data, no network or logging |
 | `breach.test.ts`, `breach-route.test.ts` | SHA-1 vectors, range parsing (padding, CRLF, partial matches), prefix-only requests, error handling, route validation, no logging |
-| `password-generator.component.test.tsx`, `password-checker.component.test.tsx` | Real components in jsdom: behaviour, accessible errors, clipboard success and failure, stale breach answers, and a privacy probe that watches fetch, XHR, beacons, storage, cookies and the console |
+| `password-generator.component.test.tsx`, `password-checker.component.test.tsx` | Real components in jsdom: behaviour, accessible errors, clipboard success and failure, stale breach answers, a check that the shown value never lags behind the settings (read after React's synchronous work, before the next task), and a privacy probe that watches fetch, XHR, beacons, storage, cookies and the console |
 | `privacy-static.test.ts` | Source tripwires (forbidden APIs, trackers, where `fetch` and `getRandomValues` may appear, dependency list) and security-header checks |
 
 ## Setup

@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { PasswordGenerator } from "@/components/password-generator";
 import { EFF_LARGE_WORDLIST } from "@/lib/wordlists/eff-large";
@@ -228,6 +228,93 @@ describe("PasswordGenerator: copy and reveal", () => {
 
     fireEvent.click(screen.getByRole("button", { name: /show generated password/i }));
     expect(output().textContent).toBe(real);
+  });
+});
+
+/**
+ * Runs `interact` as a real DOM event outside act(), lets React finish its synchronous work
+ * (microtasks), and returns before any later task. That is the page a browser could paint, or
+ * another script could read, right after the interaction. Testing Library's `fireEvent` wraps
+ * everything in act(), which also runs the follow-up renders and so hides exactly this state.
+ */
+async function interactAndReadBeforeNextTask(interact: () => void) {
+  const env = globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean };
+  const previous = env.IS_REACT_ACT_ENVIRONMENT;
+  env.IS_REACT_ACT_ENVIRONMENT = false;
+  try {
+    interact();
+    for (let tick = 0; tick < 5; tick += 1) await Promise.resolve();
+  } finally {
+    env.IS_REACT_ACT_ENVIRONMENT = previous;
+  }
+}
+
+/** Lets scheduled follow-up work finish so it cannot leak into the next test. */
+async function settle() {
+  await act(async () => {});
+}
+
+function typeNatively(input: HTMLInputElement, value: string) {
+  Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")?.set?.call(input, value);
+  input.dispatchEvent(new Event("input", { bubbles: true }));
+}
+
+describe("PasswordGenerator: the output never lags behind the settings", () => {
+  it("does not keep showing the old password beside a length error", async () => {
+    render(<PasswordGenerator />);
+    expect(output().textContent).toHaveLength(20);
+
+    await interactAndReadBeforeNextTask(() => typeNatively(lengthInput(), "5"));
+
+    expect(screen.getByRole("alert").textContent).toMatch(/length must be/i);
+    expect(output().textContent).toBe("Nothing to show yet.");
+    await settle();
+  });
+
+  it("does not show a password that ignores a switch that was just turned off", async () => {
+    render(<PasswordGenerator />);
+    // With every type required (the default) the first password contains a symbol.
+    expect(output().textContent).toMatch(/[^A-Za-z0-9]/);
+
+    await interactAndReadBeforeNextTask(() => screen.getByRole("switch", { name: /symbols/i }).click());
+
+    expect(output().textContent).toMatch(/^[A-Za-z0-9]{20}$/);
+    await settle();
+  });
+
+  it("shows a new password in the same step the length becomes valid again", async () => {
+    render(<PasswordGenerator />);
+    fireEvent.change(lengthInput(), { target: { value: "5" } });
+    expect(output().textContent).toBe("Nothing to show yet.");
+
+    await interactAndReadBeforeNextTask(() => typeNatively(lengthInput(), "16"));
+
+    expect(screen.queryByRole("alert")).toBeNull();
+    expect(output().textContent).toHaveLength(16);
+    await settle();
+  });
+
+  it("shows a passphrase, not the old password, in the step the mode changes", async () => {
+    render(<PasswordGenerator />);
+    const password = output().textContent;
+
+    await interactAndReadBeforeNextTask(() => screen.getByRole("radio", { name: "Passphrase" }).click());
+
+    expect(output().textContent).not.toBe(password);
+    expect(output().textContent?.split("-")).toHaveLength(6);
+    await settle();
+  });
+
+  it("stops saying the old value was copied in the step a new one is generated", async () => {
+    stubClipboard(async () => undefined);
+    render(<PasswordGenerator />);
+    fireEvent.click(screen.getByRole("button", { name: /copy password to clipboard/i }));
+    expect(await screen.findByText(/the password was copied to your clipboard/i)).toBeTruthy();
+
+    await interactAndReadBeforeNextTask(() => screen.getByRole("button", { name: /generate new password/i }).click());
+
+    expect(screen.queryByText(/was copied to your clipboard/i)).toBeNull();
+    await settle();
   });
 });
 
